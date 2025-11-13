@@ -14,6 +14,24 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/'/g, "&#039;");
   }
 
+  // Unregister participant handler
+  async function unregisterParticipant(activityName, email) {
+    if (!confirm(`Remove ${email} from ${activityName}?`)) return;
+    try {
+      const response = await fetch(`/activities/${encodeURIComponent(activityName)}/signup?email=${encodeURIComponent(email)}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        fetchActivities();
+      } else {
+        const result = await response.json();
+        alert(result.detail || "Failed to remove participant.");
+      }
+    } catch (error) {
+      alert("Error removing participant.");
+    }
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -35,12 +53,17 @@ document.addEventListener("DOMContentLoaded", () => {
         let participantsHTML = "";
         if (details.participants && details.participants.length > 0) {
           const items = details.participants
-            .map((p) => `<li class="participant-item">${escapeHtml(p)}</li>`)
+            .map((p) => `
+              <div class="participant-item">
+                <span class="participant-email">${escapeHtml(p)}</span>
+                <button class="delete-participant-btn" title="Remove" data-activity="${escapeHtml(name)}" data-email="${escapeHtml(p)}">&#128465;</button>
+              </div>
+            `)
             .join("");
           participantsHTML = `
             <div class="participants-section">
               <h5>Participants (${details.participants.length})</h5>
-              <ul class="participants-list">${items}</ul>
+              <div class="participants-list">${items}</div>
             </div>
           `;
         } else {
@@ -60,7 +83,17 @@ document.addEventListener("DOMContentLoaded", () => {
           ${participantsHTML}
         `;
 
+
         activitiesList.appendChild(activityCard);
+
+        // Add event listeners for delete buttons after card is in DOM
+        activityCard.querySelectorAll('.delete-participant-btn').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            const activity = btn.getAttribute('data-activity');
+            const email = btn.getAttribute('data-email');
+            unregisterParticipant(activity, email);
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
